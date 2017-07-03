@@ -126,6 +126,22 @@ void compute_mandelbrot(){
     double c_x;
     double c_y;
 
+    // Inicializa o ambiente MPI
+    MPI_Init(NULL, NULL);
+
+    // Pega número de processos
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // Pega o rank do processo
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    // Pega o nome do processo, provavelmente não usaremos
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+
     for(i_y = 0; i_y < i_y_max; i_y++){
         c_y = c_y_min + i_y * pixel_height;
 
@@ -156,6 +172,7 @@ void compute_mandelbrot(){
             /* update_rgb_buffer(iteration, i_x, i_y); */
         };
     };
+    MPI_Finalize();
 };
 
 int main(int argc, char *argv[]){
