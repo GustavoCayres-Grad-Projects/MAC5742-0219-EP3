@@ -69,14 +69,12 @@ void init(int argc, char *argv[]){
         printf("    Triple Spiral Valley: ./mandelbrot_pth -0.188 -0.012 0.554 0.754 11500\n");
         exit(0);
     }
-    else{
+    else{        
         sscanf(argv[1], "%lf", &c_x_min);
         sscanf(argv[2], "%lf", &c_x_max);
         sscanf(argv[3], "%lf", &c_y_min);
         sscanf(argv[4], "%lf", &c_y_max);
         sscanf(argv[5], "%d", &image_size);
-        sscanf(argv[6], "%d", &n_cores);
-
 
         i_x_max           = image_size;
         i_y_max           = image_size;
@@ -189,14 +187,15 @@ void mandelbrot_th(int taskid) {
     compute_mandelbrot(si.init_x, si.final_x, si.init_y, si.final_y);
 }
 
-void cria_threads() {
+void cria_threads(int argc, char *argv[]) {
     int aux;
     int taskid;
     long i;
 
-    MPI_Init(NULL, NULL);
-    MPI_Comm_size(MPI_COMM_WORLD,&n_cores);
-    MPI_Comm_rank(MPI_COMM_WORLD,&taskid);
+    MPI_Init(&argc,&argv);
+    
+    MPI_Comm_size(MPI_COMM_WORLD, &n_cores);
+    MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
 
     mandelbrot_th(taskid);
 
@@ -207,8 +206,7 @@ int main(int argc, char *argv[]){
     init(argc, argv);
 
     allocate_image_buffer();
-
-    cria_threads();
+    cria_threads(argc, argv);
 
     write_to_file();
 

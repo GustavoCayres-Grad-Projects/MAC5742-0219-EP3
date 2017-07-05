@@ -133,6 +133,13 @@ void compute_mandelbrot(){
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
+    if (world_size % 2 != 0) {
+        printf("ERROR: Must be an even number of tasks!  Quitting...\n");
+        MPI_Abort(MPI_COMM_WORLD, rc);
+        exit(0);
+    }
+
+
     // Pega o rank do processo
     int world_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -172,6 +179,7 @@ void compute_mandelbrot(){
             /* update_rgb_buffer(iteration, i_x, i_y); */
         };
     };
+    
     MPI_Finalize();
 };
 
