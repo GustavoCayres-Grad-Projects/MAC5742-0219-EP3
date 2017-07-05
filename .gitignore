@@ -1,1 +1,8 @@
 .idea/
+
+#ignore output files
+results/
+*.ppm
+
+#ignore mac files
+*.DS_Store
