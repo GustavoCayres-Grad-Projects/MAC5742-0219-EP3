@@ -10,7 +10,7 @@ INITIAL_SIZE=16
 
 SIZE=$INITIAL_SIZE
 THREAD_NUM=$INITIAL_THREAD_NUM
-NAMES_PAR=('mandelbrot_pth' 'mandelbrot_omp')
+NAMES_PAR=('mandelbrot_mpi')
 NAME_SEQ=('mandelbrot_seq')
 
 make
