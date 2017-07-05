@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <omp.h>
+#include "mpi.h"
+
 
 double c_x_min;
 double c_x_max;
@@ -20,6 +21,13 @@ int i_x_max;
 int i_y_max;
 int image_buffer_size;
 int n_cores;
+
+struct sub_image {
+    int init_x;
+    int final_x;
+    int init_y;
+    int final_y;
+};
 
 int gradient_size = 16;
 int colors[17][3] = {
@@ -53,12 +61,12 @@ void allocate_image_buffer(){
 
 void init(int argc, char *argv[]){
     if(argc < 6){
-        printf("usage: ./mandelbrot_omp c_x_min c_x_max c_y_min c_y_max image_size\n");
+        printf("usage: ./mandelbrot_pth c_x_min c_x_max c_y_min c_y_max image_size\n");
         printf("examples with image_size = 11500:\n");
-        printf("    Full Picture:         ./mandelbrot_omp -2.5 1.5 -2.0 2.0 11500\n");
-        printf("    Seahorse Valley:      ./mandelbrot_omp -0.8 -0.7 0.05 0.15 11500\n");
-        printf("    Elephant Valley:      ./mandelbrot_omp 0.175 0.375 -0.1 0.1 11500\n");
-        printf("    Triple Spiral Valley: ./mandelbrot_omp -0.188 -0.012 0.554 0.754 11500\n");
+        printf("    Full Picture:         ./mandelbrot_pth -2.5 1.5 -2.0 2.0 11500\n");
+        printf("    Seahorse Valley:      ./mandelbrot_pth -0.8 -0.7 0.05 0.15 11500\n");
+        printf("    Elephant Valley:      ./mandelbrot_pth 0.175 0.375 -0.1 0.1 11500\n");
+        printf("    Triple Spiral Valley: ./mandelbrot_pth -0.188 -0.012 0.554 0.754 11500\n");
         exit(0);
     }
     else{
@@ -67,9 +75,8 @@ void init(int argc, char *argv[]){
         sscanf(argv[3], "%lf", &c_y_min);
         sscanf(argv[4], "%lf", &c_y_max);
         sscanf(argv[5], "%d", &image_size);
-	    sscanf(argv[6], "%d", &n_cores);
+        sscanf(argv[6], "%d", &n_cores);
 
-	    omp_set_num_threads(n_cores);
 
         i_x_max           = image_size;
         i_y_max           = image_size;
@@ -116,63 +123,92 @@ void write_to_file(){
     fclose(file);
 };
 
-int compute_pixel_mandelbrot(int i_x, int i_y){
+void compute_mandelbrot(int init_x, int final_x, int init_y, int final_y){ //apenas alterei para passar os parametros pra essa função
+    double z_x;
+    double z_y;
+    double z_x_squared;
+    double z_y_squared;
+    double escape_radius_squared = 4;
+
     int iteration;
-    double c_x;
-	double c_y;
-	double z_x;
-	double z_y;
-	double z_x_squared;
-	double z_y_squared;
-
-    c_y = c_y_min + i_y * pixel_height;
-
-    if(fabs(c_y) < pixel_height / 2){
-        c_y = 0.0;
-    };
-
-    c_x         = c_x_min + i_x * pixel_width;
-
-    z_x         = 0.0;
-    z_y         = 0.0;
-
-    z_x_squared = 0.0;
-    z_y_squared = 0.0;
-
-    for(iteration = 0;
-        iteration < iteration_max && \
-        ((z_x_squared + z_y_squared) < 4);
-        iteration++){
-        z_y         = 2 * z_x * z_y + c_y;
-        z_x         = z_x_squared - z_y_squared + c_x;
-
-        z_x_squared = z_x * z_x;
-        z_y_squared = z_y * z_y;
-    };
-
-    return iteration;
-};
-
-void compute_mandelbrot(){
-    int number_of_iterations;
     int i_x;
     int i_y;
 
-    #pragma omp parallel for private(i_x, i_y) collapse(2)
-    for(i_y = 0; i_y < i_y_max; i_y++){
-        for (i_x = 0; i_x < i_x_max; i_x++){
-            number_of_iterations = compute_pixel_mandelbrot(i_x, i_y);
-            update_rgb_buffer(number_of_iterations, i_x, i_y);
+    double c_x;
+    double c_y;
+
+    for(i_y = init_y; i_y < final_y; i_y++){
+        c_y = c_y_min + i_y * pixel_height;
+
+        if(fabs(c_y) < pixel_height / 2){
+            c_y = 0.0;
+        };
+
+        for(i_x = init_x; i_x < final_x; i_x++){
+            c_x         = c_x_min + i_x * pixel_width;
+
+            z_x         = 0.0;
+            z_y         = 0.0;
+
+            z_x_squared = 0.0;
+            z_y_squared = 0.0;
+
+            for(iteration = 0;
+                iteration < iteration_max && \
+                ((z_x_squared + z_y_squared) < escape_radius_squared);
+                iteration++){
+                z_y         = 2 * z_x * z_y + c_y;
+                z_x         = z_x_squared - z_y_squared + c_x;
+
+                z_x_squared = z_x * z_x;
+                z_y_squared = z_y * z_y;
+            };
+
+            update_rgb_buffer(iteration, i_x, i_y);
         };
     };
 };
+
+struct sub_image calcula_sub_image(int id) {
+    struct sub_image si;
+
+    si.init_x = (i_x_max/n_cores) * id;
+    si.init_y = 0;
+    si.final_x = si.init_x + (i_x_max/n_cores);
+    si.final_y = i_y_max;
+
+    return si;
+}
+
+void mandelbrot_th(int taskid) {
+    int id;
+    struct sub_image si;
+
+    si = calcula_sub_image(taskid);
+
+    compute_mandelbrot(si.init_x, si.final_x, si.init_y, si.final_y);
+}
+
+void cria_threads() {
+    int aux;
+    int taskid;
+    long i;
+
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD,&n_cores);
+    MPI_Comm_rank(MPI_COMM_WORLD,&taskid);
+
+    mandelbrot_th(taskid);
+
+    MPI_Finalize();
+}
 
 int main(int argc, char *argv[]){
     init(argc, argv);
 
     allocate_image_buffer();
 
-    compute_mandelbrot();
+    cria_threads();
 
     write_to_file();
 
