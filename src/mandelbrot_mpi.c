@@ -102,18 +102,16 @@ void update_rgb_buffer(int iteration, int x, int y){
     };
 };
 
-void write_to_file(){
+void write_to_file(int taskid){
     FILE * file;
-    char * filename               = "output.ppm";
-    char * comment                = "# ";
-
+    char filename[50];
+    char * comment = "# ";
     int max_color_component_value = 255;
 
+    sprintf(filename, "tmp_output_%d.ppm", taskid);
     file = fopen(filename,"wb");
-
-    fprintf(file, "P6\n %s\n %d\n %d\n %d\n", comment,
-            i_x_max, i_y_max, max_color_component_value);
-
+    fprintf(file, "P6\n %s\n %d\n %d\n %d\n",
+        comment, i_x_max, i_y_max, max_color_component_value);
     for(int i = 0; i < image_buffer_size; i++){
         fwrite(image_buffer[i], 1 , 3, file);
     };
@@ -121,7 +119,7 @@ void write_to_file(){
     fclose(file);
 };
 
-void compute_mandelbrot(int init_x, int final_x, int init_y, int final_y){ //apenas alterei para passar os parametros pra essa função
+void compute_mandelbrot(int init_x, int final_x, int init_y, int final_y){
     double z_x;
     double z_y;
     double z_x_squared;
@@ -167,7 +165,7 @@ void compute_mandelbrot(int init_x, int final_x, int init_y, int final_y){ //ape
     };
 };
 
-struct sub_image calcula_sub_image(int id) {
+struct sub_image calculate_sub_image(int id) {
     struct sub_image si;
 
     si.init_x = (i_x_max/n_cores) * id;
@@ -179,36 +177,25 @@ struct sub_image calcula_sub_image(int id) {
 }
 
 void mandelbrot_th(int taskid) {
-    int id;
     struct sub_image si;
 
-    si = calcula_sub_image(taskid);
+    si = calculate_sub_image(taskid);
 
     compute_mandelbrot(si.init_x, si.final_x, si.init_y, si.final_y);
 }
 
-void cria_threads(int argc, char *argv[]) {
-    int aux;
+int main(int argc, char *argv[]){
     int taskid;
-    long i;
 
+    init(argc, argv);
     MPI_Init(&argc,&argv);
-    
     MPI_Comm_size(MPI_COMM_WORLD, &n_cores);
     MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
 
+    allocate_image_buffer();
     mandelbrot_th(taskid);
+    write_to_file(taskid);
 
     MPI_Finalize();
-}
-
-int main(int argc, char *argv[]){
-    init(argc, argv);
-
-    allocate_image_buffer();
-    cria_threads(argc, argv);
-
-    write_to_file();
-
     return 0;
-};
+}
