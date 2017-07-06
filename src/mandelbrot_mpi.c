@@ -3,6 +3,8 @@
 #include <math.h>
 #include "mpi.h"
 
+#define MASTER 0
+
 
 double c_x_min;
 double c_x_max;
@@ -11,6 +13,8 @@ double c_y_max;
 
 double pixel_width;
 double pixel_height;
+
+MPI_File fh;
 
 int iteration_max = 200;
 
@@ -61,12 +65,12 @@ void allocate_image_buffer(){
 
 void init(int argc, char *argv[]){
     if(argc < 6){
-        printf("usage: ./mandelbrot_pth c_x_min c_x_max c_y_min c_y_max image_size\n");
+        printf("usage: ./mandelbrot_mpi c_x_min c_x_max c_y_min c_y_max image_size\n");
         printf("examples with image_size = 11500:\n");
-        printf("    Full Picture:         ./mandelbrot_pth -2.5 1.5 -2.0 2.0 11500\n");
-        printf("    Seahorse Valley:      ./mandelbrot_pth -0.8 -0.7 0.05 0.15 11500\n");
-        printf("    Elephant Valley:      ./mandelbrot_pth 0.175 0.375 -0.1 0.1 11500\n");
-        printf("    Triple Spiral Valley: ./mandelbrot_pth -0.188 -0.012 0.554 0.754 11500\n");
+        printf("    Full Picture:         ./mandelbrot_mpi -2.5 1.5 -2.0 2.0 11500\n");
+        printf("    Seahorse Valley:      ./mandelbrot_mpi -0.8 -0.7 0.05 0.15 11500\n");
+        printf("    Elephant Valley:      ./mandelbrot_mpi 0.175 0.375 -0.1 0.1 11500\n");
+        printf("    Triple Spiral Valley: ./mandelbrot_mpi -0.188 -0.012 0.554 0.754 11500\n");
         exit(0);
     }
     else{        
@@ -105,18 +109,27 @@ void update_rgb_buffer(int iteration, int x, int y){
 void write_to_file(int taskid){
     FILE * file;
     char filename[50];
+    char header[50];
     char * comment = "# ";
     int max_color_component_value = 255;
 
     sprintf(filename, "tmp_output_%d.ppm", taskid);
     file = fopen(filename,"wb");
+
     fprintf(file, "P6\n %s\n %d\n %d\n %d\n",
-        comment, i_x_max, i_y_max, max_color_component_value);
+            comment, i_x_max, i_y_max, max_color_component_value);
+
+    sprintf(header, "P6\n %s\n %d\n %d\n %d\n",
+            comment, i_x_max, i_y_max, max_color_component_value);
+    MPI_File_write(fh, header, sizeof(header), MPI_BYTE, MPI_STATUS_IGNORE);
+
     for(int i = 0; i < image_buffer_size; i++){
         fwrite(image_buffer[i], 1 , 3, file);
+        MPI_File_write(fh, image_buffer[i], 3, MPI_BYTE, MPI_STATUS_IGNORE);
     };
 
-    fclose(file);
+    printf("task %d done.\n", taskid);
+    fclose(file);   
 };
 
 void compute_mandelbrot(int init_x, int final_x, int init_y, int final_y){
@@ -192,10 +205,14 @@ int main(int argc, char *argv[]){
     MPI_Comm_size(MPI_COMM_WORLD, &n_cores);
     MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
 
+    MPI_File_open(MPI_COMM_WORLD, "output.ppm", MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+    
+
     allocate_image_buffer();
     mandelbrot_th(taskid);
     write_to_file(taskid);
 
+    MPI_File_close(&fh);
     MPI_Finalize();
     return 0;
 }

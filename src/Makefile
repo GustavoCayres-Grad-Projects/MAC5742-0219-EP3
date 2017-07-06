@@ -9,7 +9,7 @@ CC_OPT=-std=c11
 .PHONY: all
 all: $(OUTPUT)_mpi $(OUTPUT)_seq
 
-$(OUTPUT)_mpi: $(OUTPUT)_omp.c
+$(OUTPUT)_mpi: $(OUTPUT)_mpi.c
 	$(MPICC) -o $(OUTPUT)_mpi $(CC_OPT) $(OUTPUT)_mpi.c
 
 $(OUTPUT)_seq: $(OUTPUT)_seq.c
