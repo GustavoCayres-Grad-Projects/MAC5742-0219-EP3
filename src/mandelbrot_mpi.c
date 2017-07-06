@@ -194,7 +194,7 @@ int main(int argc, char *argv[]){
 
     allocate_image_buffer();
     mandelbrot_th(taskid);
-    write_to_file(taskid);
+    ///write_to_file(taskid);
 
     MPI_Finalize();
     return 0;
