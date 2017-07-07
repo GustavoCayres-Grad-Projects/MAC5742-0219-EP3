@@ -27,5 +27,5 @@ done
 
 SIZE=$INITIAL_SIZE
 
-mv *.log results/$NAME_SEQ
+mv *.log results/$THREAD_IT
 rm output.ppm
