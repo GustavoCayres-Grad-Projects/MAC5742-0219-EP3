@@ -11,7 +11,7 @@ CC_PTH=-pthread
 all: $(OUTPUT)_mpi
 
 $(OUTPUT)_omp: $(OUTPUT)_mpi.c
-	$(CC) -o $(OUTPUT)_mpi $(CC_OPT) $(OUTPUT)_mpi.c
+	$(CC) $(CC_OPT) -o $(OUTPUT)_mpi $(OUTPUT)_mpi.c
 
 .PHONY: clean
 clean:
