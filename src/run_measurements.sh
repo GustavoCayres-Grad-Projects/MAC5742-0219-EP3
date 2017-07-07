@@ -15,7 +15,7 @@ NAME_SEQ=('mandelbrot_mpi')
 make
 mkdir results
 
-mkdir results/$NAME_SEQ
+mkdir results/$THREAD_IT
 
 for ((i=1; i<=$ITERATIONS; i++)); do
         perf stat -r $MEASUREMENTS mpirun -np $THREAD_IT -hostfile hostfile ./$NAME_SEQ --allow-run-as-root -2.5 1.5 -2.0 2.0 $SIZE >> full.log 2>&1
