@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <math.h>
 #include "mpi.h"
 
@@ -14,12 +15,11 @@ double c_y_max;
 double pixel_width;
 double pixel_height;
 
-MPI_File fh;
-
 int iteration_max = 200;
 
 int image_size;
 unsigned char **image_buffer;
+unsigned char **image_buffer2;
 
 int i_x_max;
 int i_y_max;
@@ -57,9 +57,14 @@ int colors[17][3] = {
 void allocate_image_buffer(){
     int rgb_size = 3;
     image_buffer = (unsigned char **) malloc(sizeof(unsigned char *) * image_buffer_size);
+    image_buffer2 = (unsigned char **) malloc(sizeof(unsigned char *) * image_buffer_size * 2);
 
     for(int i = 0; i < image_buffer_size; i++){
         image_buffer[i] = (unsigned char *) malloc(sizeof(unsigned char) * rgb_size);
+    };
+
+    for(int i = 0; i < image_buffer_size * 2; i++){
+        image_buffer2[i] = (unsigned char *) malloc(sizeof(unsigned char) * rgb_size);
     };
 };
 
@@ -108,32 +113,59 @@ void update_rgb_buffer(int iteration, int x, int y){
 
 void write_to_file(int taskid){
     FILE * file;
-    char filename[50];
+    char * filename = "output.ppm";
     char header[50];
     char * comment = "# ";
     int max_color_component_value = 255;
+    MPI_File fh;
 
-    sprintf(filename, "tmp_output_%d.ppm", taskid);
-    file = fopen(filename,"wb");
 
-    fprintf(file, "P6\n %s\n %d\n %d\n %d\n",
-            comment, i_x_max, i_y_max, max_color_component_value);
+    if( access(filename, F_OK ) != -1 ) {
+        // file exists
+        printf("deletou o arquivo.\n");
+        remove(filename);
+    } 
+    
+
+    MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
 
     sprintf(header, "P6\n %s\n %d\n %d\n %d\n",
             comment, i_x_max, i_y_max, max_color_component_value);
+
+    //fprintf(file, "P6\n %s\n %d\n %d\n %d\n",
+    //        comment, i_x_max, i_y_max, max_color_component_value);
     
     if (taskid == MASTER) {
-        MPI_File_write_ordered(fh, header, 25, MPI_BYTE, MPI_STATUS_IGNORE);
+        MPI_File_write(fh, header, 25, MPI_BYTE, MPI_STATUS_IGNORE);
+        
         printf("task: %d | header: %s\n", taskid, header);
+        MPI_Barrier(MPI_COMM_WORLD);
     }
-    
+
+    else {
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+
+    MPI_File_close(&fh);
+
+    //sprintf(filename, "output.ppm");
+    file = fopen(filename,"a");
+
     for(int i = 0; i < image_buffer_size; i++){
-        fwrite(image_buffer[i], 1 , 3, file);
+        if (image_buffer[i][0] != 0 || image_buffer[i][1] != 0 || image_buffer[i][2] != 0) {
+            fwrite(image_buffer[i], 1 , 3, file);
+            //MPI_File_write_ordered(fh, image_buffer[i], 3, MPI_BYTE, MPI_STATUS_IGNORE);
+        }
+        else {
+            fseek(file, 1, SEEK_CUR);
+            //MPI_File_seek(fh, 3, MPI_SEEK_CUR);
+        }
         //MPI_File_write(fh, image_buffer[i], 3, MPI_BYTE, MPI_STATUS_IGNORE);
-        MPI_File_write_ordered(fh, image_buffer[i], 3, MPI_BYTE, MPI_STATUS_IGNORE);
+        
     };
 
     printf("task %d done.\n", taskid);
+    
     fclose(file);   
 };
 
@@ -210,14 +242,14 @@ int main(int argc, char *argv[]){
     MPI_Comm_size(MPI_COMM_WORLD, &n_cores);
     MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
 
-    MPI_File_open(MPI_COMM_WORLD, "output.ppm", MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+    
     
 
     allocate_image_buffer();
     mandelbrot_th(taskid);
     write_to_file(taskid);
 
-    MPI_File_close(&fh);
+    
     MPI_Finalize();
     return 0;
 }
