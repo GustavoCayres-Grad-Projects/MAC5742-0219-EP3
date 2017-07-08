@@ -121,11 +121,16 @@ void write_to_file(int taskid){
 
     sprintf(header, "P6\n %s\n %d\n %d\n %d\n",
             comment, i_x_max, i_y_max, max_color_component_value);
-    MPI_File_write(fh, header, 25, MPI_BYTE, MPI_STATUS_IGNORE);
-
+    
+    if (taskid == MASTER) {
+        MPI_File_write_ordered(fh, header, 25, MPI_BYTE, MPI_STATUS_IGNORE);
+        printf("task: %d | header: %s\n", taskid, header);
+    }
+    
     for(int i = 0; i < image_buffer_size; i++){
         fwrite(image_buffer[i], 1 , 3, file);
-        MPI_File_write(fh, image_buffer[i], 3, MPI_BYTE, MPI_STATUS_IGNORE);
+        //MPI_File_write(fh, image_buffer[i], 3, MPI_BYTE, MPI_STATUS_IGNORE);
+        MPI_File_write_ordered(fh, image_buffer[i], 3, MPI_BYTE, MPI_STATUS_IGNORE);
     };
 
     printf("task %d done.\n", taskid);
@@ -181,10 +186,10 @@ void compute_mandelbrot(int init_x, int final_x, int init_y, int final_y){
 struct sub_image calculate_sub_image(int id) {
     struct sub_image si;
 
-    si.init_x = (i_x_max/n_cores) * id;
-    si.init_y = 0;
-    si.final_x = si.init_x + (i_x_max/n_cores);
-    si.final_y = i_y_max;
+    si.init_x = 0; 
+    si.init_y = (i_y_max/n_cores) * id;
+    si.final_x = i_x_max;
+    si.final_y = si.init_y + (i_y_max/n_cores);
 
     return si;
 }
