@@ -121,7 +121,7 @@ void write_to_file(int taskid){
 
     sprintf(header, "P6\n %s\n %d\n %d\n %d\n",
             comment, i_x_max, i_y_max, max_color_component_value);
-    MPI_File_write(fh, header, sizeof(header), MPI_BYTE, MPI_STATUS_IGNORE);
+    MPI_File_write(fh, header, 25, MPI_BYTE, MPI_STATUS_IGNORE);
 
     for(int i = 0; i < image_buffer_size; i++){
         fwrite(image_buffer[i], 1 , 3, file);
