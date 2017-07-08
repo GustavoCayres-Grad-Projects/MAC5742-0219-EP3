@@ -1,10 +1,10 @@
 
- Performance counter stats for 'mpirun -np 4 -hostfile hostfile ./mandelbrot_mpi --allow-run-as-root -2.5 1.5 -2.0 2.0 8192' (10 runs):
+ Performance counter stats for 'mpirun -np 8 -hostfile hostfile ./mandelbrot_mpi --allow-run-as-root -2.5 1.5 -2.0 2.0 8192' (10 runs):
 
-         64.469027      task-clock (msec)         #    0.024 CPUs utilized            ( +-  1.83% )
-               106      context-switches          #    0.002 M/sec                    ( +- 15.98% )
-                16      cpu-migrations            #    0.247 K/sec                    ( +-  6.53% )
-             3,033      page-faults               #    0.047 M/sec                    ( +-  0.27% )
+         91.459855      task-clock (msec)         #    0.030 CPUs utilized            ( +-  1.06% )
+               140      context-switches          #    0.002 M/sec                    ( +-  1.19% )
+                21      cpu-migrations            #    0.226 K/sec                    ( +-  5.20% )
+             3,760      page-faults               #    0.041 M/sec                    ( +-  0.08% )
    <not supported>      cycles                   
    <not supported>      stalled-cycles-frontend  
    <not supported>      stalled-cycles-backend   
@@ -12,5 +12,5 @@
    <not supported>      branches                 
    <not supported>      branch-misses            
 
-       2.649237501 seconds time elapsed                                          ( +-  5.92% )
+       3.071499829 seconds time elapsed                                          ( +- 29.84% )
 
